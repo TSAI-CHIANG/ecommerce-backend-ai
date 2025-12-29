@@ -14,7 +14,8 @@ export const defaultOrders = [
         quantity: 2,
         estimatedDeliveryTimeMs: 1723456800000
       }
-    ]
+    ],
+    userId: "f3b4e2a1-9c8d-4e7f-a6b5-3c2d1e0f9a8b"
   },
   {
     id: "b6b6c212-d30e-4d4a-805d-90b52ce6b37d",
@@ -26,6 +27,7 @@ export const defaultOrders = [
         quantity: 2,
         estimatedDeliveryTimeMs: 1718618400000
       }
-    ]
+    ],
+    userId: "f3b4e2a1-9c8d-4e7f-a6b5-3c2d1e0f9a8b"
   }
 ];

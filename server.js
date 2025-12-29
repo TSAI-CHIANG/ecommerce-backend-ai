@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { sequelize } from './models/index.js';
@@ -9,6 +10,7 @@ import cartItemRoutes from './routes/cartItems.js';
 import orderRoutes from './routes/orders.js';
 import resetRoutes from './routes/reset.js';
 import paymentSummaryRoutes from './routes/paymentSummary.js';
+import authRoutes from './routes/auth.js';
 import { Product } from './models/Product.js';
 import { DeliveryOption } from './models/DeliveryOption.js';
 import { CartItem } from './models/CartItem.js';
@@ -17,6 +19,10 @@ import { defaultProducts } from './defaultData/defaultProducts.js';
 import { defaultDeliveryOptions } from './defaultData/defaultDeliveryOptions.js';
 import { defaultCart } from './defaultData/defaultCart.js';
 import { defaultOrders } from './defaultData/defaultOrders.js';
+import { defaultUser } from './defaultData/defaultUser.js';
+import { User } from './models/User.js';
+import { setUserId } from './middleware/auth.js';
+import { startCleanupJob } from './jobs/cleanupBlockedTokens.js';
 import fs from 'fs';
 
 const app = express();
@@ -27,11 +33,17 @@ const __dirname = path.dirname(__filename);
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
+
 
 // Serve images from the images folder
 app.use('/images', express.static(path.join(__dirname, 'images')));
 
+// Auth middleware - sets req.userId for all requests
+app.use(setUserId);
+
 // Use routes
+app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/delivery-options', deliveryOptionRoutes);
 app.use('/api/cart-items', cartItemRoutes);
@@ -91,6 +103,16 @@ if (productCount === 0) {
     updatedAt: new Date(timestamp + index)
   }));
 
+  // Create default user for testing auth
+  const passwordHash = await User.hashPassword(defaultUser.password);
+  await User.create({
+    id: defaultUser.id,
+    email: defaultUser.email,
+    passwordHash,
+    createdAt: new Date(timestamp),
+    updatedAt: new Date(timestamp)
+  });
+
   await Product.bulkCreate(productsWithTimestamps);
   await DeliveryOption.bulkCreate(deliveryOptionsWithTimestamps);
   await CartItem.bulkCreate(cartItemsWithTimestamps);
@@ -98,6 +120,9 @@ if (productCount === 0) {
 
   console.log('Default data added to the database.');
 }
+
+// Start background jobs
+startCleanupJob();
 
 // Start server
 app.listen(PORT, () => {

@@ -19,6 +19,10 @@ export const Order = sequelize.define('Order', {
     type: DataTypes.JSON,
     allowNull: false
   },
+  userId: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
   createdAt: {
     type: DataTypes.DATE(3)
   },

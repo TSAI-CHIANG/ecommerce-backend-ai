@@ -19,7 +19,15 @@ Here's a list of all the URL Paths you can use with this backend and what each U
 **Payment Summary, Reset**
 - [GET /api/payment-summary](#get-apipayment-summary)
 - [POST /api/reset](#post-apireset)
-  
+
+**Authentication** (optional)
+- [GET /api/auth/profile](#get-apiauthprofile)
+- [POST /api/auth/register](#post-apiauthregister)
+- [POST /api/auth/login](#post-apiauthlogin)
+- [POST /api/auth/logout](#post-apiauthlogout)
+
+---
+
 ## GET /api/products
 Returns a list of products.
 
@@ -65,6 +73,8 @@ Returns a list of all delivery options.
 ## GET /api/cart-items
 Returns all items in the cart.
 
+**Authentication:** Required when `AUTH_ENABLED=true`
+
 **Query Parameters:**
 - `expand=product` (optional): include full product details
 
@@ -83,6 +93,8 @@ Returns all items in the cart.
 
 ## POST /api/cart-items
 Adds a product to the cart.
+
+**Authentication:** Required when `AUTH_ENABLED=true`
 
 **Request:**
 ```js
@@ -105,6 +117,8 @@ Adds a product to the cart.
 ## PUT /api/cart-items/:productId
 Updates a cart item.
 
+**Authentication:** Required when `AUTH_ENABLED=true`
+
 **URL Parameters:**
 - `productId`: ID of the product to update
 
@@ -113,7 +127,7 @@ Updates a cart item.
 {
    // Optional, must be ≥ 1
   "quantity": "number",
-  
+
    // Optional
   "deliveryOptionId": "string"
 }
@@ -131,6 +145,8 @@ Updates a cart item.
 ## DELETE /api/cart-items/:productId
 Removes an item from the cart.
 
+**Authentication:** Required when `AUTH_ENABLED=true`
+
 **URL Parameters:**
 - `productId`: ID of the product to remove
 
@@ -139,6 +155,8 @@ Removes an item from the cart.
 
 ## GET /api/orders
 Returns all orders, sorted by most recent first.
+
+**Authentication:** Required when `AUTH_ENABLED=true`
 
 **Query Parameters:**
 - `expand=products` (optional): include full product details
@@ -166,6 +184,8 @@ Returns all orders, sorted by most recent first.
 ## POST /api/orders
 Creates a new order from the current cart items.
 
+**Authentication:** Required when `AUTH_ENABLED=true`
+
 **Response:**
 ```js
 {
@@ -185,6 +205,8 @@ Creates a new order from the current cart items.
 
 ## GET /api/orders/:orderId
 Returns a specific order.
+
+**Authentication:** Required when `AUTH_ENABLED=true`
 
 **URL Parameters:**
 - `orderId`: ID of the order
@@ -213,6 +235,8 @@ Returns a specific order.
 ## GET /api/payment-summary
 Calculates and returns the payment summary for the current cart.
 
+**Authentication:** Required when `AUTH_ENABLED=true`
+
 **Response:**
 ```js
 {
@@ -230,3 +254,120 @@ Resets the database to its default state.
 
 **Response:**
 - Status: 204 No Response
+
+---
+
+## Authentication
+
+Authentication is **optional** and can be toggled on/off using an environment variable.
+
+### Enabling/Disabling Authentication
+
+Set the `AUTH_ENABLED` environment variable:
+
+```bash
+# Auth disabled by default
+npm start
+
+# Auth enabled - cart/orders belong to a user.
+AUTH_ENABLED=true npm start
+```
+
+### Default User
+
+A default user is created with the default data:
+
+| Field | Value |
+|-------|-------|
+| Email | `default@example.com` |
+| Password | `password123` |
+
+This user owns the default cart items and orders.
+
+### Example:
+```js
+// Login - cookie is set automatically
+await axios.post('/api/auth/login', { email, password });
+
+// Authenticated requests - cookie sent automatically
+await axios.get('/api/cart-items');
+
+// Logout - cookie is cleared
+await axios.post('/api/auth/logout');
+```
+
+---
+
+## GET /api/auth/profile
+Returns the current user's information.
+
+**Authentication:** Required when `AUTH_ENABLED=true`
+
+**Response:**
+```js
+{
+  "id": "uuid",
+  "email": "string"
+}
+```
+
+**Errors:**
+- `401`: Not logged in
+- `400`: Auth disabled
+
+## POST /api/auth/register
+Creates a new user and logs them in.
+
+**Request:**
+```js
+{
+  "email": "string",
+  "password": "string"
+}
+```
+
+**Response:**
+```js
+{
+  "id": "uuid",
+  "email": "string"
+}
+```
+- Sets `token` cookie (HttpOnly, Secure, SameSite=Strict)
+
+**Errors:**
+- `400`: Email already registered, invalid email, password too short, or auth disabled
+
+## POST /api/auth/login
+Logs in an existing user.
+
+**Request:**
+```js
+{
+  "email": "string",
+  "password": "string"
+}
+```
+
+**Response:**
+```js
+{
+  "id": "uuid",
+  "email": "string"
+}
+```
+- Sets `token` cookie (HttpOnly, Secure, SameSite=Strict)
+
+**Errors:**
+- `401`: Invalid email or password
+- `400`: Auth disabled or already logged in
+
+## POST /api/auth/logout
+Logs out the current user.
+
+**Response:**
+```js
+{
+  "message": "Logged out successfully"
+}
+```

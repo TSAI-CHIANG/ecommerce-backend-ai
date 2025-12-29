@@ -3,12 +3,16 @@ import { Order } from '../models/Order.js';
 import { Product } from '../models/Product.js';
 import { DeliveryOption } from '../models/DeliveryOption.js';
 import { CartItem } from '../models/CartItem.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   const expand = req.query.expand;
-  let orders = await Order.unscoped().findAll({ order: [['orderTimeMs', 'DESC']] }); // Sort by most recent
+  let orders = await Order.unscoped().findAll({
+    where: { userId: req.userId },
+    order: [['orderTimeMs', 'DESC']]
+  });
 
   if (expand === 'products') {
     orders = await Promise.all(orders.map(async (order) => {
@@ -29,8 +33,8 @@ router.get('/', async (req, res) => {
   res.json(orders);
 });
 
-router.post('/', async (req, res) => {
-  const cartItems = await CartItem.findAll();
+router.post('/', requireAuth, async (req, res) => {
+  const cartItems = await CartItem.findAll({ where: { userId: req.userId } });
 
   if (cartItems.length === 0) {
     return res.status(400).json({ error: 'Cart is empty' });
@@ -62,19 +66,20 @@ router.post('/', async (req, res) => {
   const order = await Order.create({
     orderTimeMs: Date.now(),
     totalCostCents,
-    products
+    products,
+    userId: req.userId
   });
 
-  await CartItem.destroy({ where: {} });
+  await CartItem.destroy({ where: { userId: req.userId } });
 
   res.status(201).json(order);
 });
 
-router.get('/:orderId', async (req, res) => {
+router.get('/:orderId', requireAuth, async (req, res) => {
   const { orderId } = req.params;
   const expand = req.query.expand;
 
-  let order = await Order.findByPk(orderId);
+  let order = await Order.findOne({ where: { id: orderId, userId: req.userId } });
   if (!order) {
     return res.status(404).json({ error: 'Order not found' });
   }
